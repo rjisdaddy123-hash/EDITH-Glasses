@@ -1,0 +1,26 @@
+name: EDITH - First Build Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Meta Camera Sample
+    runs-on: macos-26
+
+    steps:
+      - name: Check Xcode
+        run: xcodebuild -version
+
+      - name: Download Meta SDK
+        run: |
+          git clone https://github.com/facebook/meta-wearables-dat-ios.git meta-sdk
+
+      - name: Build Camera Access Sample
+        run: |
+          xcodebuild \
+            -project meta-sdk/samples/CameraAccess/CameraAccess.xcodeproj \
+            -scheme CameraAccess \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
