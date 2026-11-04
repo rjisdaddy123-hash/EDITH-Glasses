@@ -1,25 +1,64 @@
-name: EDITH - First Build Test
+
+name: EDITH - Import Meta Camera Sample
 
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
-    name: Build Meta Camera Sample
+    name: Import and Build Meta Camera Sample
     runs-on: macos-26
 
     steps:
-      - name: Check Xcode
-        run: xcodebuild -version
+      - name: Check out EDITH repository
+        uses: actions/checkout@v4
 
-      - name: Download Meta SDK
+      - name: Check Apple build tools
         run: |
-          git clone https://github.com/facebook/meta-wearables-dat-ios.git meta-sdk
+          xcodebuild -version
+          swift --version
 
-      - name: Build Camera Access Sample
+      - name: Download official Meta sample
+        run: |
+          git clone --depth 1 https://github.com/meta/meta-wearables-dat-ios.git meta-sdk
+
+      - name: Import sample without overwriting existing EDITH work
+        run: |
+          if [ ! -d "MetaCameraAccess" ]; then
+            mkdir -p MetaCameraAccess
+            cp -R meta-sdk/samples/CameraAccess/. MetaCameraAccess/
+            if [ -f "meta-sdk/LICENSE" ]; then
+              cp meta-sdk/LICENSE MetaCameraAccess/META-LICENSE
+            fi
+          else
+            echo "MetaCameraAccess already exists; leaving it untouched."
+          fi
+
+      - name: Save imported source in EDITH repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add MetaCameraAccess
+          if ! git diff --cached --quiet; then
+            git commit -m "Import official Meta CameraAccess sample"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          else
+            echo "No new source files to commit."
+          fi
+
+      - name: Resolve Meta SDK package
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project MetaCameraAccess/CameraAccess.xcodeproj \
+            -scheme CameraAccess
+
+      - name: Build Camera Access sample
         run: |
           xcodebuild \
-            -project meta-sdk/samples/CameraAccess/CameraAccess.xcodeproj \
+            -project MetaCameraAccess/CameraAccess.xcodeproj \
             -scheme CameraAccess \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
